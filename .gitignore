@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+.expo/*
+web-build/
+
+# React Native
+ios/
+android/
+build/
+/coverage
+*.iml
+.gradle/
+/local.properties
+*.keystore
+*.jks
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+
+# Metro / cache
+.expo-packager-cache/
+.expo-cache/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.swp
+*.lock
+*.log
+
+# TypeScript
+*.tsbuildinfo
