@@ -2,9 +2,10 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList } from '../navigation/AppNavigator';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { RootStackParamList, MainTabParamList } from '../navigation/AppNavigator';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCart } from '../contexts/CartContext';
 import { theme } from '../theme';
@@ -22,7 +23,12 @@ interface CartItem {
 
 
 export default function CartScreen() {
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<
+    CompositeNavigationProp<
+      BottomTabNavigationProp<MainTabParamList, 'Cart'>,
+      StackNavigationProp<RootStackParamList>
+    >
+  >();
   const { colors } = useTheme();
   const { cartItems, updateCartItemQuantity, removeFromCart, getCartTotal } = useCart();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -57,10 +63,10 @@ export default function CartScreen() {
 
   const handleCheckout = () => {
     const total = calculateTotal();
-    navigation.navigate('OrderSummary' as never, { 
-      items: cartItems, 
-      total: total 
-    } as never);
+    navigation.navigate('OrderSummary', {
+      items: cartItems,
+      total: total,
+    });
   };
 
   const renderCartItem = ({ item, index }: { item: CartItem; index: number }) => (
@@ -153,7 +159,7 @@ export default function CartScreen() {
               Add some fresh produce to get started
             </Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('Home' as never)}
+              onPress={() => navigation.navigate('Home')}
               style={[styles.shopButton, { backgroundColor: colors.primary }]}
             >
               <Text style={[styles.shopButtonText, { color: colors.primaryForeground }]}>
