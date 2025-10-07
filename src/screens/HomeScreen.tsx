@@ -1,149 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, FlatList, Dimensions, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, FlatList, Dimensions, Image, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme';
+import { supabase } from '../utils/supabase';
 
 const { width } = Dimensions.get('window');
 
-interface Product {
+export interface Product {
   id: string;
+  created_at: string;
   name: string;
-  price: number;
-  unit: string;
-  location: string;
-  category: string;
-  image: string;
-  farmer: {
-    name: string;
-    avatar: string;
-    location: string;
-    rating: number;
-    totalSales: number;
-  };
   description: string;
-  availableQuantity: number;
-  nutritionInfo?: string[];
+  price: number;
+  quantity: number;
+  image_url: string;
+  farmer_id: string;
 }
-
-const mockProducts: Product[] = [
-  {
-    id: '1',
-    name: 'Fresh Tomatoes',
-    price: 350,
-    unit: 'kg',
-    location: 'Green Valley Farm',
-    category: 'vegetables',
-    image: 'https://images.unsplash.com/photo-1546470427-e5e4b8b53b06?w=400&h=300&fit=crop',
-    farmer: {
-      name: 'John Smith',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-      location: 'Green Valley, CA',
-      rating: 4.8,
-      totalSales: 156
-    },
-    description: 'Fresh, juicy tomatoes grown using organic farming methods. Perfect for salads, cooking, or snacking. Rich in vitamins and antioxidants.',
-    availableQuantity: 25,
-    nutritionInfo: ['High in Vitamin C', 'Rich in Lycopene', 'Low Calories', 'High Water Content']
-  },
-  {
-    id: '2',
-    name: 'Organic Bananas',
-    price: 280,
-    unit: 'kg',
-    location: 'Sunny Orchards',
-    category: 'fruits',
-    image: 'https://images.unsplash.com/photo-1587132137056-bfbf0166836e?w=400&h=300&fit=crop',
-    farmer: {
-      name: 'Maria Garcia',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b977?w=400&h=400&fit=crop',
-      location: 'Sunny Valley, FL',
-      rating: 4.9,
-      totalSales: 203
-    },
-    description: 'Sweet, naturally ripened organic bananas. Great source of potassium and perfect for smoothies, baking, or eating fresh.',
-    availableQuantity: 40,
-    nutritionInfo: ['High in Potassium', 'Natural Sugars', 'Vitamin B6', 'Dietary Fiber']
-  },
-  {
-    id: '3',
-    name: 'Fresh Spinach',
-    price: 220,
-    unit: 'kg',
-    location: 'Riverside Farm',
-    category: 'vegetables',
-    image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&h=300&fit=crop',
-    farmer: {
-      name: 'David Wilson',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
-      location: 'Riverside, OR',
-      rating: 4.7,
-      totalSales: 89
-    },
-    description: 'Crisp, fresh spinach leaves harvested this morning. Perfect for salads, smoothies, or cooking. Packed with iron and vitamins.',
-    availableQuantity: 15,
-    nutritionInfo: ['High in Iron', 'Vitamin K', 'Folate', 'Antioxidants']
-  },
-  {
-    id: '4',
-    name: 'Red Apples',
-    price: 420,
-    unit: 'kg',
-    location: 'Mountain View Orchard',
-    category: 'fruits',
-    image: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&h=300&fit=crop',
-    farmer: {
-      name: 'Sarah Johnson',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
-      location: 'Mountain View, WA',
-      rating: 4.9,
-      totalSales: 267
-    },
-    description: 'Crisp, sweet red apples from our mountain orchard. Perfect for snacking, baking, or making fresh juice. Grown without pesticides.',
-    availableQuantity: 50,
-    nutritionInfo: ['High Fiber', 'Vitamin C', 'Antioxidants', 'Natural Sugars']
-  },
-  {
-    id: '5',
-    name: 'Organic Rice',
-    price: 580,
-    unit: 'kg',
-    location: 'Golden Fields',
-    category: 'grains',
-    image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=300&fit=crop',
-    farmer: {
-      name: 'Chen Wei',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-      location: 'Golden Fields, TX',
-      rating: 4.8,
-      totalSales: 145
-    },
-    description: 'Premium organic jasmine rice grown with traditional methods. Aromatic, fluffy texture perfect for any meal. Sustainably farmed.',
-    availableQuantity: 100,
-    nutritionInfo: ['Complex Carbs', 'Gluten Free', 'B Vitamins', 'Essential Amino Acids']
-  },
-  {
-    id: '6',
-    name: 'Bell Peppers',
-    price: 380,
-    unit: 'kg',
-    location: 'Valley Fresh Farm',
-    category: 'vegetables',
-    image: 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=400&h=300&fit=crop',
-    farmer: {
-      name: 'Emma Brown',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b977?w=400&h=400&fit=crop',
-      location: 'Fresh Valley, AZ',
-      rating: 4.6,
-      totalSales: 98
-    },
-    description: 'Colorful, crunchy bell peppers in red, yellow, and green. Sweet flavor and crisp texture. Perfect for stir-fries, salads, or stuffing.',
-    availableQuantity: 30,
-    nutritionInfo: ['Vitamin C', 'Vitamin A', 'Low Calories', 'Antioxidants']
-  }
-];
 
 const categories = [
   { id: 'all', label: 'All', icon: '🌾' },
@@ -157,6 +32,8 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const fadeAnim = new Animated.Value(0);
   const slideAnim = new Animated.Value(30);
 
@@ -175,12 +52,31 @@ export default function HomeScreen() {
     ]).start();
   }, []);
 
-  const filteredProducts = mockProducts.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      let query = supabase.from('products').select('*');
+
+      if (searchQuery) {
+        query = query.ilike('name', `%${searchQuery}%`);
+      }
+
+      if (selectedCategory !== 'all') {
+        query = query.eq('category', selectedCategory);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching products:', error);
+      } else {
+        setProducts(data);
+      }
+      setLoading(false);
+    };
+
+    fetchProducts();
+  }, [searchQuery, selectedCategory]);
 
   const handleProductSelect = (product: Product) => {
     navigation.navigate('ProductDetail' as never, { product } as never);
@@ -203,13 +99,13 @@ export default function HomeScreen() {
         {/* Product Image */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: item.image }}
+            source={{ uri: item.image_url }}
             style={styles.productImage}
             resizeMode="cover"
           />
           <View style={[styles.priceTag, { backgroundColor: colors.card + 'E6' }]}>
             <Text style={[styles.priceText, { color: colors.foreground }]}>
-              ₹{item.price}/{item.unit}
+              ₹{item.price}/kg
             </Text>
           </View>
         </View>
@@ -219,12 +115,6 @@ export default function HomeScreen() {
           <Text style={[styles.productName, { color: colors.foreground }]} numberOfLines={1}>
             {item.name}
           </Text>
-          <View style={styles.farmerInfo}>
-            <Ionicons name="location-outline" size={12} color={colors.mutedForeground} />
-            <Text style={[styles.farmerName, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {item.farmer.name}
-            </Text>
-          </View>
           
           <TouchableOpacity
             style={[styles.viewButton, { backgroundColor: colors.primary }]}
@@ -310,9 +200,11 @@ export default function HomeScreen() {
 
       {/* Products Grid */}
       <View style={styles.productsSection}>
-        {filteredProducts.length > 0 ? (
+        {loading ? (
+          <ActivityIndicator size="large" color={colors.primary} />
+        ) : products.length > 0 ? (
           <FlatList
-            data={filteredProducts}
+            data={products}
             renderItem={renderProduct}
             numColumns={2}
             keyExtractor={(item) => item.id}
@@ -328,15 +220,23 @@ export default function HomeScreen() {
             ]}
           >
             <View style={[styles.noResultsIcon, { backgroundColor: colors.primary + '1A' }]}>
-              <Ionicons name="search-outline" size={32} color={colors.mutedForeground} />
+              <Ionicons name="add" size={32} color={colors.mutedForeground} />
             </View>
-            <Text style={[styles.noResultsTitle, { color: colors.foreground }]}>No products found</Text>
+            <Text style={[styles.noResultsTitle, { color: colors.foreground }]}>No products yet</Text>
             <Text style={[styles.noResultsText, { color: colors.mutedForeground }]}>
-              Try adjusting your search or category filter
+              Add a product to get started.
             </Text>
           </Animated.View>
         )}
       </View>
+
+      {/* Add Product FAB */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => navigation.navigate('AddProduct' as never)}
+      >
+        <Ionicons name="add" size={24} color={colors.primaryForeground} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -535,5 +435,16 @@ const styles = StyleSheet.create({
   noResultsText: {
     fontSize: theme.fontSize.md,
     textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 32,
+    right: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadows.lg,
   },
 });

@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { supabase } from '../utils/supabase';
+import { Session } from '@supabase/supabase-js';
 
 // Import screens
 import SplashScreen from '../screens/SplashScreen';
@@ -16,6 +18,10 @@ import CartScreen from '../screens/CartScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChatScreen from '../screens/ChatScreen';
 import OrderSummaryScreen from '../screens/OrderSummaryScreen';
+
+import EditProfileScreen from '../screens/EditProfileScreen';
+
+import AddProductScreen from '../screens/AddProductScreen';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -34,6 +40,11 @@ export type RootStackParamList = {
     items: any[];
     total: number;
   };
+  EditProfile: {
+    profile: any;
+    user: any;
+  };
+  AddProduct: undefined;
 };
 
 export type MainTabParamList = {
@@ -84,23 +95,53 @@ function MainTabs() {
 
 export default function AppNavigator() {
   const { colors } = useTheme();
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <NavigationContainer>
       <Stack.Navigator
+        key={session ? 'authed' : 'unauthed'}
+        initialRouteName={loading ? 'Splash' : (session ? 'Main' : 'Language')}
         screenOptions={{
           headerShown: false,
           cardStyle: { backgroundColor: colors.background },
         }}
       >
-        <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen name="Language" component={LanguageSelectionScreen} />
-        <Stack.Screen name="Onboarding" component={OnboardingScreens} />
-        <Stack.Screen name="Auth" component={AuthScreen} />
-        <Stack.Screen name="Main" component={MainTabs} />
-        <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-        <Stack.Screen name="Chat" component={ChatScreen} />
-        <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} />
+        {loading ? (
+          <Stack.Screen name="Splash" component={SplashScreen} />
+        ) : session && session.user ? (
+          <>
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="AddProduct" component={AddProductScreen} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="Splash" component={SplashScreen} />
+            <Stack.Screen name="Language" component={LanguageSelectionScreen} />
+            <Stack.Screen name="Onboarding" component={OnboardingScreens} />
+            <Stack.Screen name="Auth" component={AuthScreen} />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

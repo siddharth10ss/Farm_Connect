@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Dimensions, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Dimensions, Animated, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme';
+import { supabase } from '../utils/supabase';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,6 +17,7 @@ export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('email');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const fadeAnim = new Animated.Value(0);
   const slideAnim = new Animated.Value(30);
 
@@ -45,11 +47,22 @@ export default function AuthScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    // Simulate authentication
-    setTimeout(() => {
-      navigation.navigate('Main' as never);
-    }, 1000);
+  const handleSubmit = async () => {
+    setLoading(true);
+    const { email, password, name } = formData;
+
+    if (isLogin) {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) Alert.alert('Sign In Error', error.message);
+    } else {
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password, 
+        options: { data: { full_name: name } }
+      });
+      if (error) Alert.alert('Sign Up Error', error.message);
+    }
+    setLoading(false);
   };
 
   const handleBack = () => {
@@ -290,9 +303,10 @@ export default function AuthScreen() {
               <TouchableOpacity
                 onPress={handleSubmit}
                 style={[styles.submitButton, { backgroundColor: colors.primary }]}
+                disabled={loading}
               >
                 <Text style={[styles.submitText, { color: colors.primaryForeground }]}>
-                  {isLogin ? 'Sign In' : 'Create Account'}
+                  {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
                 </Text>
               </TouchableOpacity>
             </View>

@@ -14,10 +14,32 @@ export default function ProductDetailScreen() {
   const { colors } = useTheme();
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [farmer, setFarmer] = useState<any>(null);
   const fadeAnim = new Animated.Value(0);
   const slideAnim = new Animated.Value(30);
 
+  // @ts-ignore - Route params typing
+  const { product } = route.params;
+
   useEffect(() => {
+    const fetchFarmer = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', product.farmer_id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching farmer:', error);
+      } else {
+        setFarmer(data);
+      }
+    };
+
+    if (product.farmer_id) {
+      fetchFarmer();
+    }
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -30,10 +52,7 @@ export default function ProductDetailScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
-
-  // @ts-ignore - Route params typing
-  const { product } = route.params;
+  }, [product.farmer_id]);
 
   const handleAddToCart = () => {
     // Add to cart logic here
@@ -43,13 +62,13 @@ export default function ProductDetailScreen() {
 
   const handleChatWithFarmer = () => {
     navigation.navigate('Chat' as never, { 
-      farmer: product.farmer, 
+      farmer: farmer, 
       product: product 
     } as never);
   };
 
   const increaseQuantity = () => {
-    if (quantity < product.availableQuantity) {
+    if (quantity < product.quantity) {
       setQuantity(quantity + 1);
     }
   };
@@ -89,15 +108,10 @@ export default function ProductDetailScreen() {
         >
           <View style={[styles.imageContainer, { backgroundColor: colors.card }]}>
             <Image
-              source={{ uri: product.image }}
+              source={{ uri: product.image_url }}
               style={styles.productImage}
               resizeMode="cover"
             />
-            <View style={[styles.categoryBadge, { backgroundColor: colors.secondary }]}>
-              <Text style={[styles.categoryText, { color: colors.secondaryForeground }]}>
-                {product.category}
-              </Text>
-            </View>
           </View>
         </Animated.View>
 
@@ -118,12 +132,12 @@ export default function ProductDetailScreen() {
                 {product.name}
               </Text>
               <Text style={[styles.productPrice, { color: colors.primary }]}>
-                ₹{product.price}/{product.unit}
+                ₹{product.price}/kg
               </Text>
             </View>
             <View style={styles.availabilitySection}>
               <Text style={[styles.availabilityText, { color: colors.mutedForeground }]}>
-                Available: {product.availableQuantity} {product.unit}
+                Available: {product.quantity} kg
               </Text>
             </View>
           </View>
@@ -132,67 +146,31 @@ export default function ProductDetailScreen() {
             {product.description}
           </Text>
 
-          {/* Nutrition Info */}
-          {product.nutritionInfo && (
-            <View style={styles.nutritionSection}>
+          {/* Farmer Info */}
+          {farmer && (
+            <View style={styles.farmerSection}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Nutrition Benefits
+                From the Farmer
               </Text>
-              <View style={styles.nutritionTags}>
-                {product.nutritionInfo.map((info, index) => (
-                  <View key={index} style={[styles.nutritionTag, { backgroundColor: colors.primary + '1A' }]}>
-                    <Text style={[styles.nutritionTagText, { color: colors.primary }]}>
-                      {info}
-                    </Text>
-                  </View>
-                ))}
+              <View style={[styles.farmerCard, { backgroundColor: colors.muted }]}>
+                <Image
+                  source={{ uri: farmer.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop' }}
+                  style={styles.farmerAvatar}
+                />
+                <View style={styles.farmerInfo}>
+                  <Text style={[styles.farmerName, { color: colors.foreground }]}>
+                    {farmer.full_name}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleChatWithFarmer}
+                  style={[styles.chatButton, { backgroundColor: colors.primary }]}
+                >
+                  <Ionicons name="chatbubble-outline" size={16} color={colors.primaryForeground} />
+                </TouchableOpacity>
               </View>
             </View>
           )}
-
-          {/* Farmer Info */}
-          <View style={styles.farmerSection}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              From the Farmer
-            </Text>
-            <View style={[styles.farmerCard, { backgroundColor: colors.muted }]}>
-              <Image
-                source={{ uri: product.farmer.avatar }}
-                style={styles.farmerAvatar}
-              />
-              <View style={styles.farmerInfo}>
-                <Text style={[styles.farmerName, { color: colors.foreground }]}>
-                  {product.farmer.name}
-                </Text>
-                <View style={styles.farmerLocation}>
-                  <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
-                  <Text style={[styles.farmerLocationText, { color: colors.mutedForeground }]}>
-                    {product.farmer.location}
-                  </Text>
-                </View>
-                <View style={styles.farmerStats}>
-                  <View style={styles.statItem}>
-                    <Ionicons name="star" size={14} color={colors.secondary} />
-                    <Text style={[styles.statText, { color: colors.mutedForeground }]}>
-                      {product.farmer.rating}
-                    </Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Ionicons name="bag-outline" size={14} color={colors.mutedForeground} />
-                    <Text style={[styles.statText, { color: colors.mutedForeground }]}>
-                      {product.farmer.totalSales} sales
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={handleChatWithFarmer}
-                style={[styles.chatButton, { backgroundColor: colors.primary }]}
-              >
-                <Ionicons name="chatbubble-outline" size={16} color={colors.primaryForeground} />
-              </TouchableOpacity>
-            </View>
-          </View>
         </Animated.View>
       </ScrollView>
 
@@ -236,16 +214,16 @@ export default function ProductDetailScreen() {
               style={[
                 styles.quantityButton,
                 { 
-                  backgroundColor: quantity < product.availableQuantity ? colors.primary + '1A' : colors.muted,
+                  backgroundColor: quantity < product.quantity ? colors.primary + '1A' : colors.muted,
                   borderColor: colors.border 
                 }
               ]}
-              disabled={quantity >= product.availableQuantity}
+              disabled={quantity >= product.quantity}
             >
               <Ionicons 
                 name="add" 
                 size={20} 
-                color={quantity < product.availableQuantity ? colors.primary : colors.mutedForeground} 
+                color={quantity < product.quantity ? colors.primary : colors.mutedForeground} 
               />
             </TouchableOpacity>
           </View>

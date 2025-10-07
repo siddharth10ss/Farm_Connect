@@ -1,14 +1,12 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme';
 
 const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen() {
-  const navigation = useNavigation();
   const { colors } = useTheme();
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0);
@@ -27,13 +25,7 @@ export default function SplashScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-
-    const timer = setTimeout(() => {
-      navigation.navigate('Language' as never);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [navigation]);
+  }, []);
 
   return (
     <LinearGradient

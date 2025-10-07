@@ -1,43 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Switch, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Switch, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme';
+import { supabase } from '../utils/supabase';
 
-interface User {
+interface Profile {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  avatar: string;
-  memberSince: string;
-  totalOrders: number;
-  totalSpent: number;
+  full_name: string;
+  avatar_url: string;
 }
-
-const mockUser: User = {
-  id: '1',
-  name: 'Alex Johnson',
-  email: 'alex.johnson@email.com',
-  phone: '+91 98765 43210',
-  address: '123 Green Street, Bangalore, Karnataka 560001',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
-  memberSince: '2023-06-15',
-  totalOrders: 24,
-  totalSpent: 38540
-};
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const { colors, isDark, toggleTheme } = useTheme();
   const [notifications, setNotifications] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [user, setUser] = useState<any>(null);
+
   const fadeAnim = new Animated.Value(0);
   const slideAnim = new Animated.Value(30);
 
   useEffect(() => {
+    const fetchProfile = async () => {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+
+      if (user) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select(`*`)
+          .eq('id', user.id)
+          .single();
+        if (error) {
+          console.error('Error fetching profile:', error);
+        } else {
+          setProfile(data);
+        }
+      }
+      setLoading(false);
+    };
+
+    fetchProfile();
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -51,13 +60,12 @@ export default function ProfileScreen() {
       }),
     ]).start();
   }, []);
-  const [user] = useState<User>(mockUser);
 
   const menuItems = [
     {
       id: 'orders',
       title: 'My Orders',
-      subtitle: `${user.totalOrders} orders completed`,
+      subtitle: 'View your order history',
       icon: 'bag-outline',
       onPress: () => console.log('Orders pressed'),
     },
@@ -106,6 +114,14 @@ export default function ProfileScreen() {
     });
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -117,7 +133,10 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={20} color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Profile</Text>
-        <TouchableOpacity style={[styles.editButton, { backgroundColor: colors.primary + '1A' }]}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('EditProfile' as never, { profile, user })}
+          style={[styles.editButton, { backgroundColor: colors.primary + '1A' }]}
+        >
           <Ionicons name="create-outline" size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -134,44 +153,16 @@ export default function ProfileScreen() {
             }
           ]}
         >
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
+          <Image source={{ uri: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop' }} style={styles.avatar} />
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: colors.foreground }]}>
-              {user.name}
+              {profile?.full_name || 'New User'}
             </Text>
             <Text style={[styles.userEmail, { color: colors.mutedForeground }]}>
-              {user.email}
+              {user?.email}
             </Text>
             <Text style={[styles.memberSince, { color: colors.mutedForeground }]}>
-              Member since {formatDate(user.memberSince)}
-            </Text>
-          </View>
-        </Animated.View>
-
-        {/* Stats */}
-        <Animated.View
-          style={[
-            styles.statsSection,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
-          ]}
-        >
-          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>
-              {user.totalOrders}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Total Orders
-            </Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>
-              ₹{user.totalSpent.toLocaleString()}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Total Spent
+              Member since {formatDate(user?.created_at)}
             </Text>
           </View>
         </Animated.View>
@@ -274,7 +265,7 @@ export default function ProfileScreen() {
         >
           <TouchableOpacity
             style={[styles.logoutButton, { backgroundColor: colors.destructive + '1A' }]}
-            onPress={() => navigation.navigate('Auth' as never)}
+            onPress={() => supabase.auth.signOut()}
           >
             <Ionicons name="log-out-outline" size={20} color={colors.destructive} />
             <Text style={[styles.logoutText, { color: colors.destructive }]}>
